@@ -1,24 +1,28 @@
 """An Alarm thread that periodically generates an r,g,b color value and
 sets the ledstrip to that color"""
 
+import collections
+import datetime
+import json
+import sys
 import threading
 import time
-import sys
-import json
-import datetime
-import collections
+
 from dateutil import parser
-from ledstrip_bootstrap import *
+
+from ledstrip_bootstrap import led
+from raspledstrip.color import Color
 
 SECONDS_PER_MINUTE = 60
-SECONDS_PER_DAY = SECONDS_PER_MINUTE*60*24
+SECONDS_PER_DAY = SECONDS_PER_MINUTE * 60 * 24
 MINUTES_PER_DAY = SECONDS_PER_DAY / 60
 
 TimesOfWeek = collections.namedtuple("WeekTimes", ["time_of_day", "days_of_week"])
 EMPTY_TIMES_OF_WEEK = TimesOfWeek(datetime.datetime.now(), [])
 
+
 class Alarm(threading.Thread):
-    
+
     def __init__(self, times_of_week=EMPTY_TIMES_OF_WEEK, wake_up_minutes=30, grace_minutes=10, delay=10):
         super(Alarm, self).__init__()
 
@@ -75,16 +79,15 @@ class Alarm(threading.Thread):
         """
         if MINUTES_PER_DAY - delta_minutes < self.grace_minutes:
             return Color(255.0, 255.0, 255.0, 1.0)
-            #return None 
-        if delta_minutes > self.wake_up_minutes: 
-            return None 
+            # return None
+        if delta_minutes > self.wake_up_minutes:
+            return None
 
-        level = 1.0 -   delta_minutes / self.wake_up_minutes
-        red, green, blue = 255.0, 0.0, 255.0 * level 
-        #print(red,green, blue, self.wake_up_minutes, delta_minutes, level)
+        level = 1.0 - delta_minutes / self.wake_up_minutes
+        red, green, blue = 255.0, 0.0, 255.0 * level
+        # print(red,green, blue, self.wake_up_minutes, delta_minutes, level)
         return Color(red, green, blue, level)
-        #return None
-    
+        # return None
 
     def run(self):
         while not self.is_finished:
@@ -99,23 +102,22 @@ class Alarm(threading.Thread):
         """generates a color based on the system time (at method call time) and sets
         the ledstrip to that color"""
         now = datetime.datetime.now()
-        if not now.weekday() in self.days_of_week: 
-            return 
-        delta = self.time_of_day - now 
-        delta_minutes = (delta.seconds  % SECONDS_PER_DAY) / SECONDS_PER_MINUTE
+        if not now.weekday() in self.days_of_week:
+            return
+        delta = self.time_of_day - now
+        delta_minutes = (delta.seconds % SECONDS_PER_DAY) / SECONDS_PER_MINUTE
         color = self.get_color(delta_minutes)
-        #print(now, "setting color", str(color), "for state", self)
+        # print(now, "setting color", str(color), "for state", self)
         if color:
             led.fill(color)
             led.update()
 
-
     def __repr__(self):
         return json.dumps({"time": self.time_of_day.isoformat(),
-                "weekdays": self.days_of_week,
-                "delay": self.delay,
-                "grace": self.grace_minutes,
-                "wake_up_minutes": self.wake_up_minutes})
+                           "weekdays": self.days_of_week,
+                           "delay": self.delay,
+                           "grace": self.grace_minutes,
+                           "wake_up_minutes": self.wake_up_minutes})
 
     def to_file(self, file_name):
         """serializes instance state
@@ -124,8 +126,8 @@ class Alarm(threading.Thread):
         with open(file_name, "w") as f:
             f.write(repr(self))
 
-    @staticmethod 
-    def load(state_dict): 
+    @staticmethod
+    def load(state_dict):
         """de-serializes instance from dict
         args:
             state_dict: a dictionary with object state
@@ -137,9 +139,9 @@ class Alarm(threading.Thread):
             state_dict["weekdays"])
 
         return Alarm(times_of_week,
-            state_dict["wake_up_minutes"],
-            state_dict["grace"],
-            state_dict["delay"])
+                     state_dict["wake_up_minutes"],
+                     state_dict["grace"],
+                     state_dict["delay"])
 
     @staticmethod
     def from_file(file_path):
@@ -151,14 +153,17 @@ class Alarm(threading.Thread):
             state_dict = json.load(f)
             return Alarm.load(state_dict)
 
+
 if __name__ == "__main__":
-    import pdb; pdb.set_trace() 
+    import pdb
+
+    pdb.set_trace()
     alarm = Alarm(TimesOfWeek(datetime.datetime.now(), [0, 1, 2, 3]))
     state_path = "alarm.state.json"
     alarm.to_file(state_path)
     state2 = Alarm.from_file(state_path)
     print("state2", state2)
-    #alarm.start()
+    # alarm.start()
     print("alarm started")
-    #time.sleep(100)
+    # time.sleep(100)
     alarm.is_finished = True

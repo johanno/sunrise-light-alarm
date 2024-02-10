@@ -1,5 +1,6 @@
 import colorsys
 
+
 class Color:
     """Main color object used by all methods."""
 
@@ -14,6 +15,7 @@ class Color:
         self.r = r * bright
         self.g = g * bright
         self.b = b * bright
+
     def get_color_hsv(self):
         h, s, v = colorsys.rgb_to_hsv(self.r / 255.0,
                                       self.g / 255.0,
@@ -22,14 +24,15 @@ class Color:
 
     def __str__(self):
         return "%d,%d,%d" % (self.r, self.g, self.b)
-   
+
+
 def color_hex(hex):
     """Helper for converting RGB and RGBA hex values to Color"""
     hex = hex.strip('#')
     if len(hex) == 6:
-        split = (hex[0:2],hex[2:4],hex[4:6])
+        split = (hex[0:2], hex[2:4], hex[4:6])
     elif len(hex) == 8:
-        split = (hex[0:2],hex[2:4],hex[4:6], hex[6:8])
+        split = (hex[0:2], hex[2:4], hex[4:6], hex[6:8])
     else:
         raise ValueError('Must pass in either a 6 or 8 character hex value!')
 
@@ -42,6 +45,7 @@ def color_hex(hex):
     alpha = alpha / 255.0
 
     return Color(r, g, b, alpha)
+
 
 class ColorHSV:
     """Useful for natural color transitions.
@@ -99,7 +103,7 @@ class SysColors:
     white50 = Color(255, 255, 255, 0.5)
     white25 = Color(255, 255, 255, 0.25)
 
-    off = Color(0, 0, 0);
+    off = Color(0, 0, 0)
 
     red = Color(255, 0, 0)
     orange = Color(255, 127, 0)
