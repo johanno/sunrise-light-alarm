@@ -10,7 +10,7 @@ import time
 
 from dateutil import parser
 
-from ledstrip_bootstrap import led
+# from ledstrip_bootstrap import led
 from raspledstrip.color import Color
 
 SECONDS_PER_MINUTE = 60
@@ -108,9 +108,9 @@ class Alarm(threading.Thread):
         delta_minutes = (delta.seconds % SECONDS_PER_DAY) / SECONDS_PER_MINUTE
         color = self.get_color(delta_minutes)
         # print(now, "setting color", str(color), "for state", self)
-        if color:
-            led.fill(color)
-            led.update()
+        # if color:
+        #     led.fill(color)
+        #     led.update()
 
     def __repr__(self):
         return json.dumps({"time": self.time_of_day.isoformat(),

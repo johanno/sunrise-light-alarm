@@ -3,21 +3,22 @@ import os
 import os.path
 import sys
 import time
+import json
 
 from dateutil.parser import parser
-from flask import Flask, request, session, jsonify, send_from_directory, json
+from flask import Flask, request, session, jsonify, send_from_directory
 
 import config
 from alarm import TimesOfWeek, EMPTY_TIMES_OF_WEEK, Alarm
-from ledstrip_bootstrap import led
-from raspledstrip.animation import Wave
-from raspledstrip.color import Color
+# from ledstrip_bootstrap import led
+# from raspledstrip.animation import Wave
+# from raspledstrip.color import Color
 
 WEEKDAYS = {"Mo": 0, "Tu": 1, "We": 2, "Th": 3, "Fr": 4, "Sa": 5, "Su": 6}
 WEEKDAYS_REVERSE = {v: k for (k, v) in WEEKDAYS.items()}
 
 app = Flask(__name__)
-led.all_off()
+# led.all_off()
 
 
 def with_login(f):
@@ -49,15 +50,15 @@ def on():
         level = float(request.args["level"])
 
     print("turning on with brightness", level)
-    led.fill(Color(255, 255, 255, level))
-    led.update()
+    # led.fill(Color(255, 255, 255, level))
+    # led.update()
     return jsonify({"status": "OK"})
 
 
 @app.route("/off")
 def off():
     print("turning off...")
-    led.all_off()
+    # led.all_off()
     return jsonify({"status": "OK"})
 
 
@@ -103,19 +104,9 @@ def reset():
     if os.path.exists(app.statePath):
         try:
             os.remove(app.statePath)
-        except Exception as e:
+        except OSError as e:
             print("Could not remove", app.statePath, "due to", sys.exc_info())
     flash()
-    return jsonify({"status": "OK"})
-
-
-@app.route("/test")
-def test():
-    anim = Wave(led, Color(255, 0, 0), 4)
-    for _ in range(led.lastIndex):
-        anim.step()
-        led.update()
-    led.all_off()
     return jsonify({"status": "OK"})
 
 

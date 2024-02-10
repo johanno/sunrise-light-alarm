@@ -5,6 +5,8 @@ use "from bootstrap import *" from any script to do all the standard setup
 and checks needed by any script
 """
 
+from time import sleep
+
 import os.path
 import sys
 
