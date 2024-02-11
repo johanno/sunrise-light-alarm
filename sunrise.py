@@ -3,9 +3,10 @@ import os
 import os.path
 import sys
 import time
+import json
 
-from dateutil.parser import parser
-from flask import Flask, request, session, jsonify, send_from_directory, json
+from dateutil import parser
+from flask import Flask, request, session, jsonify, send_from_directory
 
 import config
 from alarm import TimesOfWeek, EMPTY_TIMES_OF_WEEK, Alarm
@@ -23,7 +24,7 @@ led.all_off()
 def with_login(f):
     @functools.wraps(f)
     def wrapper(*args, **kwds):
-        if not "username" in session:
+        if "username" not in session:
             return json.dumps({"status": "error", "message": "Please log in."})
         request.username = session["username"]
         return f(*args, **kwds)
@@ -103,7 +104,7 @@ def reset():
     if os.path.exists(app.statePath):
         try:
             os.remove(app.statePath)
-        except Exception as e:
+        except OSError as e:
             print("Could not remove", app.statePath, "due to", sys.exc_info())
     flash()
     return jsonify({"status": "OK"})
@@ -132,7 +133,10 @@ def main():
 
     print("Starting with alarm", str(app.alarm))
     app.alarm.start()
-    app.run(host=config.host, port=config.port, threaded=config.threaded)
+    if config.debug:
+        app.config['TEMPLATES_AUTO_RELOAD'] = True
+        app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+    app.run(host=config.host, port=config.port, threaded=config.threaded, debug=config.debug)
 
 
 if __name__ == "__main__":
