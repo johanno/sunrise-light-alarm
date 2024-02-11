@@ -127,7 +127,10 @@ def main():
 
     print("Starting with alarm", str(app.alarm))
     app.alarm.start()
-    app.run(host=config.host, port=config.port, threaded=config.threaded)
+    if config.debug:
+        app.config['TEMPLATES_AUTO_RELOAD'] = True
+        app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+    app.run(host=config.host, port=config.port, threaded=config.threaded, debug=config.debug)
 
 
 if __name__ == "__main__":

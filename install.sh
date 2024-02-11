@@ -22,12 +22,12 @@ echo "unpacking project on remote " $1
 #executed on remote (raspberry-pi)
 ssh $1 '
 sudo apt-get install python3-pip
-sudo pip3 install -r requirements.txt
 
-mkdir -p sunrise 
+mkdir -p sunrise
 mv bundle.tar.gz sunrise
 cd sunrise
 tar -zxvf bundle.tar.gz
+sudo pip3 install -r requirements.txt
 
 #
 #sys-v-init service
