@@ -60,6 +60,17 @@ var App  = React.createClass({
             <div className="form-group">
             <div className="btn-group-vertical">
             <button ref="on" onClick={this.on} className="btn btn-default">Turn on lights</button>
+            <div className="brightness-slider">
+                <label>Brightness:</label>
+                <input
+                    type="range"
+                    value={this.state.brightness}
+                    onChange={this.onBrightnessChange}
+                    min={0}
+                    max={100}
+                />
+                <span>{this.state.brightness}%</span>
+            </div>
             <button ref="off" onClick={this.off} className="btn btn-default">Turn off lights</button>
             </div>
             </div>
@@ -88,21 +99,20 @@ var App  = React.createClass({
         });
     },
 
+    getInitialState: function () {
+        return {
+            brightness: 100, // Default brightness
+        };
+    },
+
+    onBrightnessChange: function (event) {
+        this.setState({ brightness: event.target.value });
+    },
+
     on: function () {
-        const brightness = prompt("Enter brightness percentage (0-100):");
-        if (brightness === null) {
-            // User clicked Cancel
-            return;
-        }
-
-        if (isNaN(brightness) || brightness < 0 || brightness > 100) {
-            alert("Invalid brightness value. Please enter a number between 0 and 100.");
-            return;
-        }
-
-        console.log("turning on with brightness: " + brightness);
-        $.get("/on", { brightness: brightness }, function (result) {
-            alert("turned on with brightness: " + brightness);
+        console.log("turning on with brightness: " + this.state.brightness);
+        $.get("/on", { brightness: this.state.brightness }, function (result) {
+            alert("turned on with brightness: " + this.state.brightness);
         });
     },
 

@@ -9,8 +9,9 @@ from dateutil.parser import parser
 from flask import Flask, request, session, jsonify, send_from_directory
 
 import config
+from GPIO_mosfet_control.dimm_light import select_res_by_percent
 from alarm import TimesOfWeek, EMPTY_TIMES_OF_WEEK, Alarm
-from GPIO_mosfet_control.led_light import power_off, all_off
+from GPIO_mosfet_control.led_light import power_off, all_off, power_on
 
 WEEKDAYS = {"Mo": 0, "Tu": 1, "We": 2, "Th": 3, "Fr": 4, "Sa": 5, "Su": 6}
 WEEKDAYS_REVERSE = {v: k for (k, v) in WEEKDAYS.items()}
@@ -44,12 +45,14 @@ def redirect_to_main():
 
 @app.route("/on")
 def on():
-    level = 1.0
+    level = 100
 
-    if "level" in request.args:
-        level = float(request.args["level"])
+    if "brightness" in request.args:
+        level = int(request.args.get("brightness"))
 
     print("turning on with brightness", level)
+    select_res_by_percent(level)
+    power_on()
     # led.fill(Color(255, 255, 255, level))
     # led.update()
     return jsonify({"status": "OK"})
@@ -58,7 +61,8 @@ def on():
 @app.route("/off")
 def off():
     print("turning off...")
-    # led.all_off()
+    power_off()
+    all_off()
     return jsonify({"status": "OK"})
 
 
