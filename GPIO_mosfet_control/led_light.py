@@ -12,10 +12,12 @@ def all_off():
 
 
 def power_on():
-    # TODO only set GPIO if it isn't already on
-    print("gpio_fun: ", GPIO.gpio_function(on_off))
+    if GPIO.gpio_function(on_off) == GPIO.OUT:
+        return
     GPIO.setup(on_off, GPIO.OUT)
 
 
 def power_off():
+    if GPIO.gpio_function(on_off) == GPIO.IN:
+        return
     GPIO.setup(on_off, GPIO.IN)

@@ -32,9 +32,14 @@ def create_res_by_number(resistance: int):
 
     # print(f"selected pins: {res_list}")
     GPIO.setmode(GPIO.BCM)
-    # TODO get a list of set and not set GPIOs and then only change the diff
-    for pin in r_all:
-        GPIO.setup(pin, GPIO.OUT)
+    # On and off is reversed for the actual resistance.
+    # I wired the resistors into the default off gate and then only when
+    # every relay is activated there is no resistance. Which then is when
+    # the LED is the darkest
+    off_list = [item for item in r_all if item not in res_list]
+    for pin in off_list:
+        if GPIO.gpio_function(pin) == GPIO.IN:
+            GPIO.setup(pin, GPIO.OUT)
     for pin in res_list:
         GPIO.setup(pin, GPIO.IN)
 
