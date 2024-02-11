@@ -5,7 +5,7 @@ import sys
 import time
 import json
 
-from dateutil.parser import parser
+from dateutil import parser
 from flask import Flask, request, session, jsonify, send_from_directory
 
 import config
