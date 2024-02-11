@@ -53,8 +53,6 @@ def on():
     print("turning on with brightness", level)
     select_res_by_percent(level)
     power_on()
-    # led.fill(Color(255, 255, 255, level))
-    # led.update()
     return jsonify({"status": "OK"})
 
 
@@ -66,14 +64,14 @@ def off():
     return jsonify({"status": "OK"})
 
 
-def flash(count=3, delay=0.5):
-    print("flashing...")
-    for _ in range(count):
-        on()
-        time.sleep(delay)
-        off()
-        time.sleep(delay)
-
+# def flash(count=3, delay=0.5):
+#     print("flashing...")
+#     for _ in range(count):
+#         on()
+#         time.sleep(delay)
+#         off()
+#         time.sleep(delay)
+#
 
 @app.route("/stat")
 def stat():
@@ -95,7 +93,6 @@ def set():
     date_time = parser.parse(args["time"])
     days_of_week = [WEEKDAYS[x] for x in args if x in WEEKDAYS]
     app.alarm.times_of_week = TimesOfWeek(date_time, days_of_week)
-    flash()
     # serialize updated state
     print("Updating state-file ", app.statePath, "with alarm", app.alarm, "daysOfWeek", days_of_week)
     app.alarm.to_file(app.statePath)
@@ -110,7 +107,6 @@ def reset():
             os.remove(app.statePath)
         except OSError as e:
             print("Could not remove", app.statePath, "due to", sys.exc_info())
-    flash()
     return jsonify({"status": "OK"})
 
 

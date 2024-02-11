@@ -10,6 +10,9 @@ import time
 
 from dateutil import parser
 
+from GPIO_mosfet_control.dimm_light import select_res_by_percent
+from GPIO_mosfet_control.led_light import power_off, power_on
+
 SECONDS_PER_MINUTE = 60
 SECONDS_PER_DAY = SECONDS_PER_MINUTE * 60 * 24
 MINUTES_PER_DAY = SECONDS_PER_DAY / 60
@@ -67,6 +70,15 @@ class Alarm(threading.Thread):
         with self._lock:
             self._times_of_week = times_of_week
 
+    def calculate_light_intensity(self, remaining_minutes: float):
+        """
+        Calculates the light intensity based on the remaining time until the alarm.
+        """
+        if remaining_minutes > self.wake_up_minutes:
+            return 0
+        else:
+            return int((remaining_minutes / self.wake_up_minutes) * 100)
+
     def run(self):
         while not self.is_finished:
             try:
@@ -77,18 +89,23 @@ class Alarm(threading.Thread):
                 time.sleep(self.delay)
 
     def tick(self):
-        """generates a color based on the system time (at method call time) and sets
-        the ledstrip to that color"""
+        """sets the light intensity of the sunrise led depending on the
+        remaining minutes to the alarm"""
         now = datetime.datetime.now()
         if not now.weekday() in self.days_of_week:
             return
         delta = self.time_of_day - now
         delta_minutes = (delta.seconds % SECONDS_PER_DAY) / SECONDS_PER_MINUTE
-        # color = self.get_color(delta_minutes)
-        # print(now, "setting color", str(color), "for state", self)
-        # if color:
-        #     led.fill(color)
-        #     led.update()
+
+        # Calculate the light intensity based on the remaining time until the alarm
+        light_intensity = self.calculate_light_intensity(delta_minutes)
+        if light_intensity == 0:
+            power_off()
+        else:
+            # Set the light intensity using your select_res_by_percent function
+            select_res_by_percent(light_intensity)
+            power_on()
+
 
     def __repr__(self):
         return json.dumps({"time": self.time_of_day.isoformat(),
