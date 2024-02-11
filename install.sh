@@ -12,7 +12,7 @@ remote=$1
 #executed locally
 echo "tar-ing project"
 rm -f bundle.tar.gz
-tar -zcvf bundle.tar.gz public raspledstrip *.py sunrise requirements.txt
+tar -zcvf bundle.tar.gz public GPIO_mosfet_control *.py sunrise requirements.txt
 
 echo "copying project to remote " $1
 scp bundle.tar.gz $1:~/

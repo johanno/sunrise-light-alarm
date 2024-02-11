@@ -10,21 +10,21 @@ from flask import Flask, request, session, jsonify, send_from_directory
 
 import config
 from alarm import TimesOfWeek, EMPTY_TIMES_OF_WEEK, Alarm
-# from ledstrip_bootstrap import led
-# from raspledstrip.animation import Wave
-# from raspledstrip.color import Color
+from GPIO_mosfet_control.led_light import power_off, all_off
 
 WEEKDAYS = {"Mo": 0, "Tu": 1, "We": 2, "Th": 3, "Fr": 4, "Sa": 5, "Su": 6}
 WEEKDAYS_REVERSE = {v: k for (k, v) in WEEKDAYS.items()}
 
 app = Flask(__name__)
+power_off()
+all_off()
 # led.all_off()
 
 
 def with_login(f):
     @functools.wraps(f)
     def wrapper(*args, **kwds):
-        if not "username" in session:
+        if "username" not in session:
             return json.dumps({"status": "error", "message": "Please log in."})
         request.username = session["username"]
         return f(*args, **kwds)

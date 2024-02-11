@@ -10,9 +10,6 @@ import time
 
 from dateutil import parser
 
-# from ledstrip_bootstrap import led
-from raspledstrip.color import Color
-
 SECONDS_PER_MINUTE = 60
 SECONDS_PER_DAY = SECONDS_PER_MINUTE * 60 * 24
 MINUTES_PER_DAY = SECONDS_PER_DAY / 60
@@ -70,25 +67,6 @@ class Alarm(threading.Thread):
         with self._lock:
             self._times_of_week = times_of_week
 
-    def get_color(self, delta_minutes):
-        """
-        args:
-            delta_minutes: number of minutes before alarm time
-        return:
-            a Color
-        """
-        if MINUTES_PER_DAY - delta_minutes < self.grace_minutes:
-            return Color(255.0, 255.0, 255.0, 1.0)
-            # return None
-        if delta_minutes > self.wake_up_minutes:
-            return None
-
-        level = 1.0 - delta_minutes / self.wake_up_minutes
-        red, green, blue = 255.0, 0.0, 255.0 * level
-        # print(red,green, blue, self.wake_up_minutes, delta_minutes, level)
-        return Color(red, green, blue, level)
-        # return None
-
     def run(self):
         while not self.is_finished:
             try:
@@ -106,7 +84,7 @@ class Alarm(threading.Thread):
             return
         delta = self.time_of_day - now
         delta_minutes = (delta.seconds % SECONDS_PER_DAY) / SECONDS_PER_MINUTE
-        color = self.get_color(delta_minutes)
+        # color = self.get_color(delta_minutes)
         # print(now, "setting color", str(color), "for state", self)
         # if color:
         #     led.fill(color)
