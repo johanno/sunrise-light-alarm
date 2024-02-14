@@ -2,4 +2,6 @@ venv
 **/__pycache__
 __pycache__
 bundle.tar.gz
-alarm.json
+alarm.json*
+.idea
+public_old

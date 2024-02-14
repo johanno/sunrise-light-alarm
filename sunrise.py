@@ -1,6 +1,8 @@
+import datetime
 import functools
 import os
 import os.path
+import shutil
 import sys
 import time
 import json
@@ -10,16 +12,17 @@ from flask import Flask, request, session, jsonify, send_from_directory
 
 import config
 from GPIO_mosfet_control.dimm_light import select_res_by_percent
-from alarm import TimesOfWeek, EMPTY_TIMES_OF_WEEK, Alarm
+from alarm import TimesOfWeek, EMPTY_TIMES_OF_WEEK, Alarm, AlarmList
 from GPIO_mosfet_control.led_light import power_off, all_off, power_on
 
-WEEKDAYS = {"Mo": 0, "Tu": 1, "We": 2, "Th": 3, "Fr": 4, "Sa": 5, "Su": 6}
-WEEKDAYS_REVERSE = {v: k for (k, v) in WEEKDAYS.items()}
+WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+WEEKDAYS_REVERSE = WEEKDAYS.reverse()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='public/static')
+app.alarmList: AlarmList = None
+
 power_off()
 all_off()
-# led.all_off()
 
 
 def with_login(f):
@@ -64,65 +67,107 @@ def off():
     return jsonify({"status": "OK"})
 
 
-# def flash(count=3, delay=0.5):
-#     print("flashing...")
-#     for _ in range(count):
-#         on()
-#         time.sleep(delay)
-#         off()
-#         time.sleep(delay)
-#
+@app.route("/list_music_files")
+# @with_login  # Decorate with the login check if needed
+def list_music_files():
+    music_folder = "/home/johannes/Musik/"  # Adjust the path to your music folder
 
-@app.route("/stat")
-def stat():
-    stat = {}
-    status = "None"
-    if app.alarm.days_of_week:
-        stat = json.loads(repr(app.alarm))
-        # prettify
-        stat["time"] = parser.parse(stat["time"]).strftime("%H:%M")
-        stat["weekdays"] = [WEEKDAYS_REVERSE[x] for x in stat["weekdays"]]
+    # Get a list of all files in the music folder
+    music_files = [f for f in os.listdir(music_folder) if os.path.isfile(os.path.join(music_folder, f))]
+    print(music_files)
+    # Return the list as JSON
+    return jsonify({"status": "OK", "music_files": music_files})
+
+
+@app.route("/get_alarms")
+def get_alarms():
+    state_path = config.statePath
+
+    try:
+        # Attempt to load the alarm from the state file
+        alarm = AlarmList.from_file(state_path)
+        alarms_repr = json.loads(repr(alarm.alarms))
+
+        # Prettify each alarm
+        for a in alarms_repr:
+            a["time"] = parser.parse(a["time"]).strftime("%H:%M")
+            a["weekdays"] = [WEEKDAYS_REVERSE[x] for x in a["weekdays"]]
         status = "OK"
-    return jsonify({"status": status, "stat": stat})
+
+    except Exception as e:
+        # Handle the case when loading the alarm fails (e.g., file not found)
+        alarms_repr = []
+        status = f"Error loading alarm: {str(e)}"
+        print("error: ", e.with_traceback())
+    print("status: ", status)
+    return jsonify({"status": status, "alarms": alarms_repr})
 
 
-@app.route("/set")
-def set():
-    args = request.args
-    print("set request-args", args)
-    date_time = parser.parse(args["time"])
-    days_of_week = [WEEKDAYS[x] for x in args if x in WEEKDAYS]
-    app.alarm.times_of_week = TimesOfWeek(date_time, days_of_week)
-    # serialize updated state
-    print("Updating state-file ", app.statePath, "with alarm", app.alarm, "daysOfWeek", days_of_week)
-    app.alarm.to_file(app.statePath)
-    return jsonify({"status": "OK"})
+@app.route("/add_alarm")
+def add_alarm():
+    try:
+        data = request.args
+        print("add_alarm request-args: ", data)
+        # Extract alarm data from the JSON payload
+        alarm_time = parser.parse(data.get("time_of_day"))
+        alarm_days = data.get("days_of_week")
+        # print("days", alarm_days)
+        alarm_days = alarm_days.split(",")
+        # validate days
+        if not set(alarm_days).issubset(set(WEEKDAYS)):
+            return jsonify({"status": "error",
+                            "message": f"alarm_days '{alarm_days}' is not subset of week days: {WEEKDAYS}"})
+        alarm_music = data.get("music")
+        # Create a new alarm instance and configure it
+        new_alarm = Alarm(music = alarm_music)
+        new_alarm.times_of_week = TimesOfWeek(alarm_time, alarm_days)
+
+        # Add the new alarm to the list of alarms
+        app.alarmList.add_alarm(new_alarm)
+
+        # Serialize updated state
+        app.alarmList.to_file(app.statePath)
+
+        return jsonify({"status": "OK"})
+    except Exception as e:
+        print(e)
+        return jsonify({"status": "error", "message": str(e)})
 
 
 @app.route("/reset")
 def reset():
-    app.alarm.times_of_week = EMPTY_TIMES_OF_WEEK
-    if os.path.exists(app.statePath):
-        try:
-            os.remove(app.statePath)
-        except OSError as e:
-            print("Could not remove", app.statePath, "due to", sys.exc_info())
-    return jsonify({"status": "OK"})
+    try:
+        data = request.args
+        id = data.get("alarm_id")
+        app.alarmList.remove_alarm(id)
+        app.alarmList.to_file(app.statePath)
+        return jsonify({"status": "OK"})
+    except Exception as e:
+        print(e)
+        return jsonify({"status": "error", "message": str(e)})
 
 
 def main():
     app.secret_key = config.secretKey
     app.statePath = config.statePath
-    app.alarm = Alarm()
+
+    app.alarmList = AlarmList()
     if os.path.exists(app.statePath):
         try:
-            app.alarm = Alarm.from_file(app.statePath)
+            app.alarmList = AlarmList.from_file(app.statePath)
         except Exception as e:
+            # Copy backup
+            backup_path = f"{app.statePath}.backup_{datetime.datetime.now().isoformat()}"
+            shutil.copy2(app.statePath, backup_path)
             os.remove(app.statePath)
             print("Cannot read app-state from " + app.statePath, e)
+            print("Creating a new one! ")
+            app.alarmList.to_file(app.statePath)
+    else:
+        app.alarmList.to_file(app.statePath)
 
-    print("Starting with alarm", str(app.alarm))
-    app.alarm.start()
+    print("Starting with alarms", str(app.alarmList.alarms))
+    app.alarmList.start()
     if config.debug:
         app.config['TEMPLATES_AUTO_RELOAD'] = True
         app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
