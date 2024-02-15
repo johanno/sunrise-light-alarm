@@ -3,25 +3,37 @@ import 'alarm.dart';
 import 'api_service.dart';
 
 class AddAlarmPopup extends StatefulWidget {
-  final ApiService apiService;
-  final bool isEdit;
-  final int alarmId;
-  final Alarm? inputAlarm;
+final ApiService apiService;
+final bool isEdit;
+final int alarmId;
+final Alarm? inputAlarm;
+final List<String> musicList;
 
-  AddAlarmPopup(
-      {required this.apiService,
-      this.alarmId = -1,
-      this.isEdit = false,
-      this.inputAlarm});
+AddAlarmPopup({
+  required this.apiService,
+  this.alarmId = -1,
+  this.isEdit = false,
+  this.inputAlarm,
+  required this.musicList,
+});
 
-  @override
-  _AddAlarmPopupState createState() => _AddAlarmPopupState();
+@override
+_AddAlarmPopupState createState() => _AddAlarmPopupState();
 }
 
 class _AddAlarmPopupState extends State<AddAlarmPopup> {
   TimeOfDay selectedTime = TimeOfDay.now();
   Set<String> selectedDays = {};
   String selectedMusic = 'Default Music';
+  List<String> availableMusic = [];
+
+  @override
+  void initState() {
+    super.initState();
+    setState(() {
+      availableMusic = [selectedMusic] + widget.musicList;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,18 +61,18 @@ class _AddAlarmPopupState extends State<AddAlarmPopup> {
                   subtitle: Text(selectedTime.format(context)),
                   onTap: () async {
                     final TimeOfDay? pickedTime = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay(
-                        hour: selectedTime.hour,
-                        minute: selectedTime.minute,
-                      ),
-                      builder:(BuildContext context, Widget? child) {
-                        return MediaQuery(
-                          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-                          child: child!,
-                        );
-                      }
-                    );
+                        context: context,
+                        initialTime: TimeOfDay(
+                          hour: selectedTime.hour,
+                          minute: selectedTime.minute,
+                        ),
+                        builder: (BuildContext context, Widget? child) {
+                          return MediaQuery(
+                            data: MediaQuery.of(context)
+                                .copyWith(alwaysUse24HourFormat: true),
+                            child: child!,
+                          );
+                        });
                     if (pickedTime != null && pickedTime != selectedTime) {
                       setState(() {
                         selectedTime = pickedTime;
@@ -144,7 +156,7 @@ class _AddAlarmPopupState extends State<AddAlarmPopup> {
                               });
                               Navigator.of(context).pop();
                             },
-                            items: ['Default Music', 'Music 1', 'Music 2']
+                            items: availableMusic
                                 .map((music) => DropdownMenuItem<String>(
                                       value: music,
                                       child: Text(music),
@@ -164,6 +176,30 @@ class _AddAlarmPopupState extends State<AddAlarmPopup> {
       actions: [
         TextButton(
           onPressed: () {
+            // Check if at least one day of the week is selected
+            if (selectedDays.isEmpty) {
+              // Show an alert with an error message
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text('Error'),
+                    content: const Text(
+                        'Please select at least one day of the week.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(); // Close the alert
+                        },
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  );
+                },
+              );
+              return;
+            }
+
             if (widget.isEdit) {
               widget.apiService.updateAlarm(
                 widget.alarmId,
