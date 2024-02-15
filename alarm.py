@@ -28,8 +28,8 @@ class AlarmList(threading.Thread):
         alarm._lock = self._lock
         self.alarms.append(alarm)
 
-    def remove_alarm(self, id: int):
-        self.alarms.pop(id)
+    def remove_alarm(self, alarm_id: int):
+        self.alarms.pop(alarm_id)
 
     def to_json(self):
         alarms_repr = [alarm.to_json() for alarm in self.alarms]
@@ -44,11 +44,11 @@ class AlarmList(threading.Thread):
             finally:
                 time.sleep(self.delay)
 
-# TODO make the alarm stop once it is ignored for 10 minutes.
+    # TODO make the alarm stop once it is ignored for 10 minutes.
     def tick(self):
         now = datetime.datetime.now()
         for alarm in self.alarms:
-            if not now.weekday() in alarm.days_of_week:
+            if not alarm.enabled and not now.weekday() in alarm.days_of_week:
                 continue
             delta = alarm.time_of_day - now
             delta_minutes = (delta.seconds % SECONDS_PER_DAY) / SECONDS_PER_MINUTE
@@ -58,7 +58,7 @@ class AlarmList(threading.Thread):
             else:
                 select_res_by_percent(light_intensity)
                 power_on()
-            if delta <= 0:
+            if delta <= 0 and alarm.enabled:
                 self.play_music(alarm.music)
 
     def to_file(self, file_name):
@@ -75,13 +75,16 @@ class AlarmList(threading.Thread):
         alarm_list = AlarmList(delay=state_dict["delay"])
         for alarm_data in state_dict["alarms"]:
             times_of_week = TimesOfWeek(
-                parser.parse(alarm_data["time"]),
-                alarm_data["weekdays"]
+                parser.parse(alarm_data["time_of_day"]),
+                alarm_data["days_of_week"]
             )
             loaded_alarm = Alarm(
                 times_of_week,
                 alarm_data["wake_up_minutes"],
-                alarm_data["grace"])
+                alarm_data["grace"],
+                alarm_data["music"],
+                alarm_data["enabled"]
+            )
             alarm_list.add_alarm(loaded_alarm)
         return alarm_list
 
@@ -92,18 +95,21 @@ class AlarmList(threading.Thread):
             return AlarmList.load(state_dict)
 
     def play_music(self, music):
-        #TODO default to known backup sound
+        # TODO default to known backup sound
         pass
+
+    def update_alarm(self, new_alarm, alarm_id):
+        self.alarms[alarm_id] = new_alarm
 
 
 class Alarm:
-    def __init__(self, times_of_week=EMPTY_TIMES_OF_WEEK, wake_up_minutes=30, grace_minutes=10, music=None):
+    def __init__(self, times_of_week=EMPTY_TIMES_OF_WEEK, wake_up_minutes=30, grace_minutes=10, music=None, enabled=True):
         super(Alarm, self).__init__()
 
         self._times_of_week = times_of_week
         self.wake_up_minutes = float(wake_up_minutes)
         self.grace_minutes = grace_minutes
-        self._enabled = True
+        self._enabled = enabled
         self.music = music
 
     @property
@@ -139,10 +145,11 @@ class Alarm:
             return int((remaining_minutes / self.wake_up_minutes) * 100)
 
     def to_json(self):
-        print(self.time_of_day)
         return {
             "time_of_day": self.time_of_day.isoformat(),
             "days_of_week": self.days_of_week,
             "grace": self.grace_minutes,
-            "wake_up_minutes": self.wake_up_minutes
+            "wake_up_minutes": self.wake_up_minutes,
+            "music": self.music,
+            "enabled": self.enabled
         }

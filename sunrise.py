@@ -9,16 +9,19 @@ import json
 
 from dateutil import parser
 from flask import Flask, request, session, jsonify, send_from_directory
+from flask_cors import CORS
 
 import config
 from GPIO_mosfet_control.dimm_light import select_res_by_percent
 from alarm import TimesOfWeek, EMPTY_TIMES_OF_WEEK, Alarm, AlarmList
 from GPIO_mosfet_control.led_light import power_off, all_off, power_on
 
-WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
-WEEKDAYS_REVERSE = WEEKDAYS.reverse()
+WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+WEEKDAYS_REVERSE = WEEKDAYS.copy()
+WEEKDAYS_REVERSE.reverse()
 
 app = Flask(__name__, static_folder='public/static')
+CORS(app)  # Enable CORS for all routes
 app.alarmList: AlarmList = None
 
 power_off()
@@ -83,68 +86,86 @@ def list_music_files():
 def get_alarms():
     state_path = config.statePath
 
-    try:
-        # Attempt to load the alarm from the state file
-        alarm = AlarmList.from_file(state_path)
-        alarms_repr = json.loads(repr(alarm.alarms))
+    # Attempt to load the alarm from the state file
+    alarm = AlarmList.from_file(state_path)
+    alarm_json = []
+    # Prettify each alarm
+    for a in alarm.alarms:
+        a = a.to_json()
+        a["time_of_day"] = parser.parse(a["time_of_day"]).strftime("%H:%M")
+        # a["days_of_week"] = [WEEKDAYS_REVERSE[x] for x in a["days_of_week"]]
+        alarm_json.append(a)
+    status = "OK"
+    ret = jsonify({"status": status, "alarms": alarm_json})
+    print("get_alarms: ", ret.data)
+    return ret
 
-        # Prettify each alarm
-        for a in alarms_repr:
-            a["time"] = parser.parse(a["time"]).strftime("%H:%M")
-            a["weekdays"] = [WEEKDAYS_REVERSE[x] for x in a["weekdays"]]
-        status = "OK"
 
-    except Exception as e:
-        # Handle the case when loading the alarm fails (e.g., file not found)
-        alarms_repr = []
-        status = f"Error loading alarm: {str(e)}"
-        print("error: ", e.with_traceback())
-    print("status: ", status)
-    return jsonify({"status": status, "alarms": alarms_repr})
+@app.route("/update_alarm")
+def update_alarm():
+    data = request.args
+    print("update_alarm request-args: ", data)
+    # Extract alarm data from the JSON payload
+    alarm_time = parser.parse(data.get("time_of_day"))
+    alarm_days = data.get("days_of_week")
+    alarm_id = int(data.get("alarm_id"))
+    enabled = bool(data.get("enabled"))
+    print("days", alarm_days)
+    alarm_days = alarm_days.split(",")
+    # validate days
+    if not set(alarm_days).issubset(set(WEEKDAYS)):
+        print(f"ERROR: {alarm_days} not in {WEEKDAYS}")
+        return jsonify({"status": "error",
+                        "message": f"alarm_days '{alarm_days}' is not subset of week days: {WEEKDAYS}"})
+    alarm_music = str(data.get("music"))
+    # Create a new alarm instance and configure it
+    new_alarm = Alarm(music=alarm_music, enabled=enabled)
+    new_alarm.times_of_week = TimesOfWeek(alarm_time, alarm_days)
+
+    # Add the new alarm to the list of alarms
+    app.alarmList.update_alarm(new_alarm, alarm_id)
+
+    # Serialize updated state
+    app.alarmList.to_file(app.statePath)
+
+    return jsonify({"status": "OK"})
 
 
 @app.route("/add_alarm")
 def add_alarm():
-    try:
-        data = request.args
-        print("add_alarm request-args: ", data)
-        # Extract alarm data from the JSON payload
-        alarm_time = parser.parse(data.get("time_of_day"))
-        alarm_days = data.get("days_of_week")
-        # print("days", alarm_days)
-        alarm_days = alarm_days.split(",")
-        # validate days
-        if not set(alarm_days).issubset(set(WEEKDAYS)):
-            return jsonify({"status": "error",
-                            "message": f"alarm_days '{alarm_days}' is not subset of week days: {WEEKDAYS}"})
-        alarm_music = data.get("music")
-        # Create a new alarm instance and configure it
-        new_alarm = Alarm(music = alarm_music)
-        new_alarm.times_of_week = TimesOfWeek(alarm_time, alarm_days)
+    data = request.args
+    print("add_alarm request-args: ", data)
+    # Extract alarm data from the JSON payload
+    alarm_time = parser.parse(data.get("time_of_day"))
+    alarm_days = data.get("days_of_week")
+    # print("days", alarm_days)
+    alarm_days = alarm_days.split(",")
+    # validate days
+    if not set(alarm_days).issubset(set(WEEKDAYS)):
+        print(f"ERROR: {alarm_days} not in {WEEKDAYS}")
+        return jsonify({"status": "error",
+                        "message": f"alarm_days '{alarm_days}' is not subset of week days: {WEEKDAYS}"})
+    alarm_music = data.get("music")
+    # Create a new alarm instance and configure it
+    new_alarm = Alarm(music=alarm_music)
+    new_alarm.times_of_week = TimesOfWeek(alarm_time, alarm_days)
 
-        # Add the new alarm to the list of alarms
-        app.alarmList.add_alarm(new_alarm)
+    # Add the new alarm to the list of alarms
+    app.alarmList.add_alarm(new_alarm)
 
-        # Serialize updated state
-        app.alarmList.to_file(app.statePath)
+    # Serialize updated state
+    app.alarmList.to_file(app.statePath)
 
-        return jsonify({"status": "OK"})
-    except Exception as e:
-        print(e)
-        return jsonify({"status": "error", "message": str(e)})
+    return jsonify({"status": "OK"})
 
 
 @app.route("/reset")
 def reset():
-    try:
-        data = request.args
-        id = data.get("alarm_id")
-        app.alarmList.remove_alarm(id)
-        app.alarmList.to_file(app.statePath)
-        return jsonify({"status": "OK"})
-    except Exception as e:
-        print(e)
-        return jsonify({"status": "error", "message": str(e)})
+    data = request.args
+    id = data.get("alarm_id")
+    app.alarmList.remove_alarm(id)
+    app.alarmList.to_file(app.statePath)
+    return jsonify({"status": "OK"})
 
 
 def main():
