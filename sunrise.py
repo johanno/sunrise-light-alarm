@@ -1,11 +1,9 @@
 import datetime
 import functools
+import json
 import os
 import os.path
 import shutil
-import sys
-import time
-import json
 
 from dateutil import parser
 from flask import Flask, request, session, jsonify, send_from_directory
@@ -13,8 +11,8 @@ from flask_cors import CORS
 
 import config
 from GPIO_mosfet_control.dimm_light import select_res_by_percent
-from alarm import TimesOfWeek, EMPTY_TIMES_OF_WEEK, Alarm, AlarmList
 from GPIO_mosfet_control.led_light import power_off, all_off, power_on
+from alarm import TimesOfWeek, Alarm, AlarmList
 
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 WEEKDAYS_REVERSE = WEEKDAYS.copy()
@@ -49,6 +47,11 @@ def redirect_to_main():
     return send_from_directory('public/', "index.html")
 
 
+@app.route("/test_con")
+def test_con():
+    return jsonify({"status": "OK"})
+
+
 @app.route("/on")
 def on():
     level = 100
@@ -67,14 +70,14 @@ def off():
     print("turning off...")
     power_off()
     all_off()
+    # TODO music off
     return jsonify({"status": "OK"})
 
 
 @app.route("/list_music_files")
 # @with_login  # Decorate with the login check if needed
 def list_music_files():
-    music_folder = "/home/johannes/Musik/"  # Adjust the path to your music folder
-
+    music_folder = "/home/pi/Music/"  # Adjust the path to your music folder
     # Get a list of all files in the music folder
     music_files = [f for f in os.listdir(music_folder) if os.path.isfile(os.path.join(music_folder, f))]
     print(music_files)
@@ -96,9 +99,19 @@ def get_alarms():
         # a["days_of_week"] = [WEEKDAYS_REVERSE[x] for x in a["days_of_week"]]
         alarm_json.append(a)
     status = "OK"
+    print(f"sending: {alarm.alarms}")
     ret = jsonify({"status": status, "alarms": alarm_json})
     print("get_alarms: ", ret.data)
     return ret
+
+
+def string_to_bool(value) -> bool:
+    if value.lower() == "true":
+        return True
+    elif value.lower() == "false":
+        return False
+    else:
+        raise ValueError("Invalid boolean string")
 
 
 @app.route("/update_alarm")
@@ -109,8 +122,9 @@ def update_alarm():
     alarm_time = parser.parse(data.get("time_of_day"))
     alarm_days = data.get("days_of_week")
     alarm_id = int(data.get("alarm_id"))
-    enabled = bool(data.get("enabled"))
+    enabled = string_to_bool(data.get("enabled"))
     print("days", alarm_days)
+    print("enabled: ", enabled)
     alarm_days = alarm_days.split(",")
     # validate days
     if not set(alarm_days).issubset(set(WEEKDAYS)):
@@ -123,6 +137,7 @@ def update_alarm():
     new_alarm.times_of_week = TimesOfWeek(alarm_time, alarm_days)
 
     # Add the new alarm to the list of alarms
+    print(f"adding: {new_alarm}")
     app.alarmList.update_alarm(new_alarm, alarm_id)
 
     # Serialize updated state
@@ -159,11 +174,11 @@ def add_alarm():
     return jsonify({"status": "OK"})
 
 
-@app.route("/reset")
-def reset():
+@app.route("/remove")
+def remove():
     data = request.args
-    id = data.get("alarm_id")
-    app.alarmList.remove_alarm(id)
+    alarm_id: int = int(data.get("alarm_id"))
+    app.alarmList.remove_alarm(alarm_id)
     app.alarmList.to_file(app.statePath)
     return jsonify({"status": "OK"})
 

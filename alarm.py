@@ -1,6 +1,7 @@
 import collections
 import datetime
 import json
+import pathlib
 import sys
 import threading
 import time
@@ -15,6 +16,12 @@ TimesOfWeek = collections.namedtuple("WeekTimes", ["time_of_day", "days_of_week"
 EMPTY_TIMES_OF_WEEK = TimesOfWeek(datetime.datetime.now(), [])
 
 
+def play_music(music):
+    if music == "Default Music" or not pathlib.Path(music).exists():
+        return "default file"
+    # TODO run a vlc wrapper command for hidden play.
+
+
 class AlarmList(threading.Thread):
     def __init__(self, delay=10):
         super(AlarmList, self).__init__()
@@ -25,11 +32,12 @@ class AlarmList(threading.Thread):
         self.setDaemon(True)
 
     def add_alarm(self, alarm):
-        alarm._lock = self._lock
-        self.alarms.append(alarm)
+        with self._lock:
+            self.alarms.append(alarm)
 
     def remove_alarm(self, alarm_id: int):
-        self.alarms.pop(alarm_id)
+        with self._lock:
+            self.alarms.pop(alarm_id)
 
     def to_json(self):
         alarms_repr = [alarm.to_json() for alarm in self.alarms]
@@ -59,7 +67,7 @@ class AlarmList(threading.Thread):
                 select_res_by_percent(light_intensity)
                 power_on()
             if delta <= 0 and alarm.enabled:
-                self.play_music(alarm.music)
+                play_music(alarm.music)
 
     def to_file(self, file_name):
         try:
@@ -94,12 +102,9 @@ class AlarmList(threading.Thread):
             state_dict = json.load(f)
             return AlarmList.load(state_dict)
 
-    def play_music(self, music):
-        # TODO default to known backup sound
-        pass
-
     def update_alarm(self, new_alarm, alarm_id):
-        self.alarms[alarm_id] = new_alarm
+        with self._lock:
+            self.alarms[alarm_id] = new_alarm
 
 
 class Alarm:
@@ -153,3 +158,6 @@ class Alarm:
             "music": self.music,
             "enabled": self.enabled
         }
+
+    def __repr__(self):
+        return str(self.to_json())
