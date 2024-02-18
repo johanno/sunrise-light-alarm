@@ -1,10 +1,13 @@
 // main.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'alarm.dart';
 import 'alarm_popup.dart';
 import 'api_service.dart';
+import 'connection_indicator.dart';
 
 void main() {
+  // TODO give url by python start up
   runApp(const SunriseApp());
 }
 
@@ -16,7 +19,8 @@ class SunriseApp extends StatelessWidget {
     return MaterialApp(
       title: 'Sunrise Light Alarm',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red, background: Colors.indigoAccent),
+        colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.red, background: Colors.indigoAccent),
         useMaterial3: true,
       ),
       home: const MyHomePage(
@@ -40,47 +44,70 @@ class _MyHomePageState extends State<MyHomePage> {
   String backendUrl = ''; // Track changes in backend URL
   List<Alarm> alarms = [];
   List<String> musicList = [];
+  late bool isConnected;
+  late Timer connectionTimer;
 
   @override
   void initState() {
     super.initState();
+    apiService = ApiService();
     _reloadAlarms(); // Load alarms when the widget is initialized
     _fetchAvailableMusic();
-    apiService = ApiService();
-    backendUrl = apiService.baseUrl;
+    isConnected = false;
+    startConnectionTimer();
+  }
+
+  @override
+  void dispose() {
+    connectionTimer.cancel(); // Cancel the timer when the widget is disposed
+    super.dispose();
+  }
+
+  void startConnectionTimer() {
+    // Start a periodic timer to check the connection every 10 seconds
+    connectionTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+      bool result = await apiService.testConnection();
+      setState(() {
+        isConnected = result;
+      });
+      if(result){
+        timer.cancel();
+      }
+    });
   }
 
   Future<void> _saveUpdatedBackendUrl(String newUrl) async {
-    // TODO: Implement logic to save the updated backend URL
-    // For simplicity, we will directly update it in the widget for now
+    backendUrl = await apiService.baseUrl;
     setState(() {
       backendUrl = newUrl;
     });
     // Also update the ApiService with the new URL
     apiService.updateBaseUrl(newUrl);
+    startConnectionTimer();
   }
 
   void _showErrDialog(String errorText) {
     showDialog(
         context: context,
         builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('Error'),
-        content: Text(errorText),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Close the alert
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      );
-    });
+          return AlertDialog(
+            title: const Text('Error'),
+            content: Text(errorText),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close the alert
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        });
   }
 
-  void _openSettings(BuildContext context) {
-    print("open settings");
+  void _openSettings(BuildContext context) async {
+    String backendUrl = await apiService.baseUrl;
+    print("UI URL: $backendUrl");
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -92,9 +119,9 @@ class _MyHomePageState extends State<MyHomePage> {
               TextField(
                 onChanged: (value) {
                   setState(() {
-                  backendUrl = value;
+                    backendUrl = value;
                   });
-                  },
+                },
                 controller: TextEditingController(text: backendUrl),
               ),
             ],
@@ -185,12 +212,12 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _openAddAlarmPopup(BuildContext context) async {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AddAlarmPopup(apiService: apiService, musicList: musicList);
-        },
-      ).whenComplete(() async => await _reloadAlarms());
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AddAlarmPopup(apiService: apiService, musicList: musicList);
+      },
+    ).whenComplete(() async => await _reloadAlarms());
   }
 
   Future<void> _openEditAlarmPopup(
@@ -202,7 +229,8 @@ class _MyHomePageState extends State<MyHomePage> {
             apiService: apiService,
             alarmId: alarmId,
             isEdit: true,
-            inputAlarm: alarm, musicList: musicList);
+            inputAlarm: alarm,
+            musicList: musicList);
       },
     ).whenComplete(() async => await _reloadAlarms());
   }
@@ -226,10 +254,22 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
+        title: Column(
+        children: [
+            Text(widget.title),
+        Row(
+          children: [
+            const Text('Connection:',style: TextStyle(fontSize: 14),),
+            const SizedBox(
+              width: 5,
+            ),
+            ConnectionIndicator(isConnected: isConnected),
+          ],
+        ),
+        ],),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
             onPressed: () async {
               await _reloadAlarms();
             },
@@ -253,7 +293,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   value: alarm.enabled,
                   onChanged: (value) {
                     _toggleAlarmEnabled(index, value ?? false);
-                    },
+                  },
                 ),
                 GestureDetector(
                   onTap: () {

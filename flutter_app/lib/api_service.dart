@@ -1,45 +1,41 @@
 // api_service.dart
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'package:encrypt_shared_pref/pref_service.dart';
 import 'package:http/http.dart' as http;
 import 'alarm.dart';
 
+const String apiUrlKey = "api_url";
+const String defaultUrl = "http://localhost:8080";
+
 class ApiService {
-  late String baseUrl;
+  late Future<String> _baseUrl;
+  final SecureStorage secureStorage = SecureStorage();
 
   ApiService() {
-    // Load the URL from a file during initialization
-    baseUrl = _loadBaseUrlFromFile() ?? "http://localhost:8080";
+    _baseUrl = _loadBaseUrl();
   }
 
-  void updateBaseUrl(String newUrl) {
-    baseUrl = newUrl;
-    _saveBaseUrlToFile(baseUrl);
+  Future<String> get baseUrl async => await _baseUrl;
+
+  Future<String> updateBaseUrl(String newUrl) async {
+    _baseUrl = Future(() => newUrl);
+    await _saveBaseUrl(newUrl);
+    return newUrl;
   }
 
-  String? _loadBaseUrlFromFile() {
-    try {
-      final file = File('api_url.txt');
-      if (file.existsSync()) {
-        return file.readAsStringSync();
-      }
-    } catch (e) {
-      print('Error loading API URL from file: $e');
-    }
-    return null;
+  Future<void> _saveBaseUrl(String apiUrl) async {
+    await secureStorage.writeString(key: apiUrlKey, value: apiUrl, isEncrypted: false);
   }
 
-  void _saveBaseUrlToFile(String url) {
-    try {
-      final file = File('api_url.txt');
-      file.writeAsStringSync(url);
-    } catch (e) {
-      print('Error saving API URL to file: $e');
-    }
+  Future<String> _loadBaseUrl() async {
+    final loadedUrl = await secureStorage.readString(key: apiUrlKey, isEncrypted: false);
+    return loadedUrl ?? defaultUrl;
   }
 
   Future<List<String>> getMusicList() async {
     try {
+      String baseUrl = await _baseUrl;
       final response = await http.get(Uri.parse('$baseUrl/list_music_files'));
 
       if (response.statusCode == 200) {
@@ -54,8 +50,21 @@ class ApiService {
     }
   }
 
+  Future<bool> testConnection() async {
+    try {
+      String baseUrl = await _baseUrl;
+      final response = await http.get(Uri.parse('$baseUrl/test_con'));
+      // print("Test: $response");
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Couldn't connect to $baseUrl: $e");
+      return false;
+    }
+  }
+
   Future<void> addAlarm(
       String timeOfDay, Set<String> daysOfWeek, String music) async {
+    String baseUrl = await _baseUrl;
     final daysOfWeekStr =
         daysOfWeek.map((selected) => selected.toString()).join(",");
     final response = await http.get(Uri.parse(
@@ -70,6 +79,7 @@ class ApiService {
   }
 
   Future<List<Alarm>> getAlarms() async {
+    String baseUrl = await _baseUrl;
     const maxRetries = 3;
     int retryCount = 0;
 
@@ -110,6 +120,7 @@ class ApiService {
   Future<void> updateAlarm(
       int alarmId, String timeOfDay, Set<String> daysOfWeek, String music,
       {bool enabled = true}) async {
+    String baseUrl = await _baseUrl;
     final daysOfWeekStr =
         daysOfWeek.map((selected) => selected.toString()).join(",");
     final response = await http.get(Uri.parse(
@@ -125,6 +136,7 @@ class ApiService {
 
   Future<void> deleteAlarm(int alarmId) async {
     try {
+      String baseUrl = await _baseUrl;
       final response = await http.get(
         Uri.parse('$baseUrl/remove?alarm_id=$alarmId'),
       );
