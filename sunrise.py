@@ -18,7 +18,7 @@ WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", 
 WEEKDAYS_REVERSE = WEEKDAYS.copy()
 WEEKDAYS_REVERSE.reverse()
 
-app = Flask(__name__, static_folder='public/static')
+app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 app.alarmList: AlarmList = None
 
@@ -39,12 +39,12 @@ def with_login(f):
 
 @app.route("/<path:path>")
 def static_content(path):
-    return send_from_directory('public/', path)
+    return send_from_directory('flutter_app/build/web/', path)
 
 
 @app.route("/")
 def redirect_to_main():
-    return send_from_directory('public/', "index.html")
+    return send_from_directory('flutter_app/build/web/', "index.html")
 
 
 @app.route("/test_con")

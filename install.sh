@@ -10,9 +10,13 @@ fi
 remote=$1
 
 #executed locally
+echo "building flutter web"
+cd flutter_app/ || exit
+flutter build web
+cd ..
 echo "tar-ing project"
 rm -f bundle.tar.gz
-tar -zcvf bundle.tar.gz public GPIO_mosfet_control *.py sunrise requirements.txt
+tar -zcvf bundle.tar.gz flutter_app/build/web GPIO_mosfet_control *.py sunrise requirements.txt
 
 echo "copying project to remote " $1
 scp bundle.tar.gz $1:~/
