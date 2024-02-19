@@ -4,15 +4,26 @@ import 'dart:convert';
 import 'package:encrypt_shared_pref/pref_service.dart';
 import 'package:http/http.dart' as http;
 import 'alarm.dart';
+import 'package:universal_html/html.dart' as html;
 
 const String apiUrlKey = "api_url";
-const String defaultUrl = "http://localhost:8080";
+String defaultUrl = "http://localhost:80";
+
+String getCurrentUrl() {
+  // Access the 'window.location' object from JavaScript
+  var url = html.window.location.href;
+  if (url.split(":").length > 1) {
+    return url;
+  }
+  return defaultUrl;
+}
 
 class ApiService {
   late Future<String> _baseUrl;
   final SecureStorage secureStorage = SecureStorage();
 
   ApiService() {
+    defaultUrl = getCurrentUrl();
     _baseUrl = _loadBaseUrl();
   }
 
@@ -25,11 +36,13 @@ class ApiService {
   }
 
   Future<void> _saveBaseUrl(String apiUrl) async {
-    await secureStorage.writeString(key: apiUrlKey, value: apiUrl, isEncrypted: false);
+    await secureStorage.writeString(
+        key: apiUrlKey, value: apiUrl, isEncrypted: false);
   }
 
   Future<String> _loadBaseUrl() async {
-    final loadedUrl = await secureStorage.readString(key: apiUrlKey, isEncrypted: false);
+    final loadedUrl =
+        await secureStorage.readString(key: apiUrlKey, isEncrypted: false);
     return loadedUrl ?? defaultUrl;
   }
 

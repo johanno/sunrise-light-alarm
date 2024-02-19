@@ -5,9 +5,9 @@ import 'alarm.dart';
 import 'alarm_popup.dart';
 import 'api_service.dart';
 import 'connection_indicator.dart';
+import "package:universal_html/html.dart" as html;
 
 void main() {
-  // TODO give url by python start up
   runApp(const SunriseApp());
 }
 
@@ -107,7 +107,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _openSettings(BuildContext context) async {
     String backendUrl = await apiService.baseUrl;
-    print("UI URL: $backendUrl");
+    // print("UI URL: $backendUrl");
     showDialog(
       context: context,
       builder: (BuildContext context) {
