@@ -53,6 +53,7 @@ class AlarmList(threading.Thread):
                 time.sleep(self.delay)
 
     # TODO make the alarm stop once it is ignored for 10 minutes.
+    # TODO make sure that alarms don't interfere: do not allow alarms that are wake_up_minutes apart
     def tick(self):
         now = datetime.datetime.now()
         for alarm in self.alarms:

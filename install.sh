@@ -16,7 +16,7 @@ flutter build web
 cd ..
 echo "tar-ing project"
 rm -f bundle.tar.gz
-tar -zcvf bundle.tar.gz flutter_app/build/web GPIO_mosfet_control *.py sunrise requirements.txt
+tar -zcvf bundle.tar.gz flutter_app/build/web GPIO_mosfet_control *.py sunrise* requirements.txt
 
 echo "copying project to remote " $1
 scp bundle.tar.gz $1:~/
@@ -36,9 +36,9 @@ sudo pip3 install -r requirements.txt
 #
 #sys-v-init service
 #
-chmod +x sunrise
-sudo cp sunrise /etc/init.d
-sudo update-rc.d sunrise defaults
+sudo cp sunrise.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable sunrise.service
 echo "rebooting remote"
 sudo reboot
 

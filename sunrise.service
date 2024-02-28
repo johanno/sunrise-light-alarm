@@ -1,0 +1,13 @@
+[Unit]
+Description=Sunrise a day light alarm webserver
+After=syslog.target network.target remote-fs.target nss-lookup.target systemd-journald-dev-log.socket
+#Before=nginx.service
+
+[Service]
+User=root
+WorkingDirectory=/home/pi/sunrise
+ExecStart=python3 -u sunrise.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
