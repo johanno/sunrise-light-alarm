@@ -17,7 +17,7 @@ TimesOfWeek = collections.namedtuple("WeekTimes", ["time_of_day", "days_of_week"
 EMPTY_TIMES_OF_WEEK = TimesOfWeek(datetime.datetime.now(), [])
 
 music_process: subprocess.Popen = None
-
+playing_music: bool = False
 
 def play_music(music):
     music = f"/home/pi/Music/{music}"
@@ -31,16 +31,19 @@ def play_music(music):
     if result.returncode == 0:
         print("Command executed successfully")
         print("Output:", result.stdout)
+        global  playing_music
+        playing_music = True
     else:
         print("Error executing command")
         print("Error:", result.stderr)
 
 
 def stop_music():
-    global music_process
+    global music_process, playing_music
     if music_process is not None:
         music_process.terminate()
         # music_process.kill()
+    playing_music = False
 
 
 class AlarmList(threading.Thread):
@@ -80,16 +83,22 @@ class AlarmList(threading.Thread):
         for alarm in self.alarms:
             if not alarm.enabled and not now.weekday() in alarm.days_of_week:
                 continue
-            delta = alarm.time_of_day - now
+            delta: datetime.datetime = alarm.time_of_day - now
+            print(f"delta: {delta}")
+            print(f"delta2: {delta <= datetime.timedelta(0)}")
             delta_minutes = (delta.seconds % SECONDS_PER_DAY) / SECONDS_PER_MINUTE
+            print(f"deltamin: {delta_minutes}")
+            # TODO disable intensity when delta  <= timedelta(0)
             light_intensity = alarm.calculate_light_intensity(delta_minutes)
+            global playing_music
+            if not playing_music and delta < datetime.timedelta(0) and not delta < datetime.timedelta(minutes=10):
+                play_music(alarm.music)
             if light_intensity == 0:
                 continue
             else:
                 select_res_by_percent(light_intensity)
                 power_on()
-            if delta <= 0 and alarm.enabled:
-                play_music(alarm.music)
+
 
     def to_file(self, file_name):
         try:
@@ -170,7 +179,7 @@ class Alarm:
         elif remaining_minutes < 0:
             return 100
         else:
-            return int((remaining_minutes / self.wake_up_minutes) * 100)
+            return int((1 - (remaining_minutes / self.wake_up_minutes)) * 100)
 
     def to_json(self):
         return {
