@@ -2,6 +2,7 @@ import collections
 import datetime
 import json
 import pathlib
+import subprocess
 import sys
 import threading
 import time
@@ -15,11 +16,31 @@ SECONDS_PER_DAY = SECONDS_PER_MINUTE * 60 * 24
 TimesOfWeek = collections.namedtuple("WeekTimes", ["time_of_day", "days_of_week"])
 EMPTY_TIMES_OF_WEEK = TimesOfWeek(datetime.datetime.now(), [])
 
+music_process: subprocess.Popen = None
+
 
 def play_music(music):
+    music = f"/home/pi/Music/{music}"
     if music == "Default Music" or not pathlib.Path(music).exists():
-        return "default file"
-    # TODO run a vlc wrapper command for hidden play.
+        return "/home/pi/Music/Awaken.m4a"
+    command = ["cvlc", music]
+    global music_process
+    music_process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    result = music_process.returncode
+    # Check the result
+    if result.returncode == 0:
+        print("Command executed successfully")
+        print("Output:", result.stdout)
+    else:
+        print("Error executing command")
+        print("Error:", result.stderr)
+
+
+def stop_music():
+    global music_process
+    if music_process is not None:
+        music_process.terminate()
+        # music_process.kill()
 
 
 class AlarmList(threading.Thread):
@@ -109,7 +130,8 @@ class AlarmList(threading.Thread):
 
 
 class Alarm:
-    def __init__(self, times_of_week=EMPTY_TIMES_OF_WEEK, wake_up_minutes=30, grace_minutes=10, music=None, enabled=True):
+    def __init__(self, times_of_week=EMPTY_TIMES_OF_WEEK, wake_up_minutes=30, grace_minutes=10, music=None,
+                 enabled=True):
         super(Alarm, self).__init__()
 
         self._times_of_week = times_of_week
