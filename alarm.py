@@ -28,13 +28,14 @@ def play_music(music):
         music = "/home/pi/Music/Awaken.m4a"
     command = ["cvlc", music]
     global music_process
-    username = "pi"
-    pw_record = pwd.getpwnam(username)
-    homedir = pw_record.pw_dir
-    env = os.environ.copy()
-    env.update({'HOME': homedir, 'LOGNAME': username, 'PWD': os.getcwd(), 'FOO': 'bar', 'USER': username})
+    # username = "pi"
+    # pw_record = pwd.getpwnam(username)
+    # homedir = pw_record.pw_dir
+    # env = os.environ.copy()
+    # env.update({'HOME': homedir, 'LOGNAME': username, 'PWD': os.getcwd(), 'FOO': 'bar', 'USER': username})
+    # music_process = subprocess.Popen(command, shell=True, user=username, env=env)
 
-    music_process = subprocess.Popen(command, shell=True, user=username, env=env)
+    music_process = subprocess.Popen(command, shell=True)
     global playing_music
     playing_music = True
 

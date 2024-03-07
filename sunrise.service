@@ -4,7 +4,7 @@ After=syslog.target network.target remote-fs.target nss-lookup.target systemd-jo
 #Before=nginx.service
 
 [Service]
-User=root
+User=pi
 WorkingDirectory=/home/pi/sunrise
 ExecStart=python3 -u sunrise.py
 Restart=on-failure
