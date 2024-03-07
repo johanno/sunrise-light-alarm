@@ -19,6 +19,7 @@ EMPTY_TIMES_OF_WEEK = TimesOfWeek(datetime.datetime.now(), [])
 music_process: subprocess.Popen = None
 playing_music: bool = False
 
+
 def play_music(music):
     music = f"/home/pi/Music/{music}"
     if music == "Default Music" or not pathlib.Path(music).exists():
@@ -31,7 +32,7 @@ def play_music(music):
     if result.returncode == 0:
         print("Command executed successfully")
         print("Output:", result.stdout)
-        global  playing_music
+        global playing_music
         playing_music = True
     else:
         print("Error executing command")
@@ -81,7 +82,8 @@ class AlarmList(threading.Thread):
     def tick(self):
         now = datetime.datetime.now()
         for alarm in self.alarms:
-            if not alarm.enabled and not now.weekday() in alarm.days_of_week:
+            # TODO maybe rather parse days of week to datetime so you have localization independent impl
+            if not alarm.enabled or not now.strftime('%A') in alarm.days_of_week:
                 continue
             delta: datetime.datetime = alarm.time_of_day - now
             print(f"delta: {delta}")
@@ -91,14 +93,13 @@ class AlarmList(threading.Thread):
             # TODO disable intensity when delta  <= timedelta(0)
             light_intensity = alarm.calculate_light_intensity(delta_minutes)
             global playing_music
-            if not playing_music and delta < datetime.timedelta(0) and not delta < datetime.timedelta(minutes=10):
+            if not playing_music and delta < datetime.timedelta(0) and not delta < datetime.timedelta(minutes=-10):
                 play_music(alarm.music)
             if light_intensity == 0:
                 continue
             else:
                 select_res_by_percent(light_intensity)
                 power_on()
-
 
     def to_file(self, file_name):
         try:
