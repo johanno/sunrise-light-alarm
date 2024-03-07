@@ -3,17 +3,6 @@ forked from cboddy/sunrise-light-alarm
 
 A [Flask](https://pypi.python.org/pypi/Flask) web-service for controlling a home brew dimmable LED light via relays with a raspberry-pi via a [Flutter](https://flutter.dev/) web-app.
 
-For port 80 to work on pi you can remove the privileged ports:
-```bash
-#save configuration permanently
-sudo nano /etc/sysctl.d/50-unprivileged-ports.conf
-# and add this line 
-'net.ipv4.ip_unprivileged_port_start=80'
-#apply conf
-sudo sysctl --system
-```
-This will make every port beginning with 80 able to be bind by any user. Shouldn't be a problem on a pi.
-
 ## Setup
 
 My setup uses a MOSFET from [amazon](https://www.amazon.de/gp/product/B075QFQN7S/) 
