@@ -1,13 +1,11 @@
 import collections
 import datetime
 import json
-import os
 import pathlib
-import pwd
-import subprocess
 import sys
 import threading
 import time
+import subprocess
 from dateutil import parser
 from GPIO_mosfet_control.dimm_light import select_res_by_percent
 from GPIO_mosfet_control.led_light import power_on
@@ -18,34 +16,21 @@ SECONDS_PER_DAY = SECONDS_PER_MINUTE * 60 * 24
 TimesOfWeek = collections.namedtuple("WeekTimes", ["time_of_day", "days_of_week"])
 EMPTY_TIMES_OF_WEEK = TimesOfWeek(datetime.datetime.now(), [])
 
-music_process: subprocess.Popen
-playing_music: bool = False
+audio_process: subprocess.Popen
 
 
 def play_music(music):
     music = f"/home/pi/Music/{music}"
     if music == "Default Music" or not pathlib.Path(music).exists():
         music = "/home/pi/Music/Awaken.m4a"
-    command = ["cvlc", music]
-    global music_process
-    # username = "pi"
-    # pw_record = pwd.getpwnam(username)
-    # homedir = pw_record.pw_dir
-    # env = os.environ.copy()
-    # env.update({'HOME': homedir, 'LOGNAME': username, 'PWD': os.getcwd(), 'FOO': 'bar', 'USER': username})
-    # music_process = subprocess.Popen(command, shell=True, user=username, env=env)
-
-    music_process = subprocess.Popen(command, shell=True)
-    global playing_music
-    playing_music = True
+    global audio_process
+    audio_process = subprocess.Popen(["python3", "audio.py", music])
 
 
 def stop_music():
-    global music_process, playing_music
-    if music_process is not None:
-        music_process.terminate()
-        # music_process.kill()
-    playing_music = False
+    global audio_process
+    if audio_process and audio_process.poll() is None:
+        audio_process.terminate()
 
 
 class AlarmList(threading.Thread):
@@ -87,15 +72,17 @@ class AlarmList(threading.Thread):
             # TODO maybe rather parse days of week to datetime so you have localization independent impl
             if not alarm.enabled or not now.strftime('%A') in alarm.days_of_week:
                 continue
-            delta: datetime.datetime = alarm.time_of_day - now
+            delta: datetime.timedelta = alarm.time_of_day - now
             print(f"delta: {delta}")
             print(f"delta2: {delta <= datetime.timedelta(0)}")
             delta_minutes = (delta.seconds % SECONDS_PER_DAY) / SECONDS_PER_MINUTE
             print(f"deltamin: {delta_minutes}")
             # TODO disable intensity when delta  <= timedelta(0)
             light_intensity = alarm.calculate_light_intensity(delta_minutes)
-            global playing_music
-            if not playing_music and delta < datetime.timedelta(0) and not delta < datetime.timedelta(minutes=-10):
+            global audio_process
+            if (not audio_process.poll() is None
+                    and delta < datetime.timedelta(0)
+                    and not delta < datetime.timedelta(minutes=-10)):
                 play_music(alarm.music)
             if light_intensity == 0:
                 continue
