@@ -16,27 +16,19 @@ SECONDS_PER_DAY = SECONDS_PER_MINUTE * 60 * 24
 TimesOfWeek = collections.namedtuple("WeekTimes", ["time_of_day", "days_of_week"])
 EMPTY_TIMES_OF_WEEK = TimesOfWeek(datetime.datetime.now(), [])
 
-music_process: subprocess.Popen = None
+music_process: subprocess.Popen
 playing_music: bool = False
 
 
 def play_music(music):
     music = f"/home/pi/Music/{music}"
     if music == "Default Music" or not pathlib.Path(music).exists():
-        return "/home/pi/Music/Awaken.m4a"
+        music = "/home/pi/Music/Awaken.m4a"
     command = ["cvlc", music]
     global music_process
     music_process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    result = music_process.returncode
-    # Check the result
-    if result.returncode == 0:
-        print("Command executed successfully")
-        print("Output:", result.stdout)
-        global playing_music
-        playing_music = True
-    else:
-        print("Error executing command")
-        print("Error:", result.stderr)
+    global playing_music
+    playing_music = True
 
 
 def stop_music():
@@ -73,6 +65,7 @@ class AlarmList(threading.Thread):
             try:
                 self.tick()
             except Exception as e:
+                print(e)
                 print(sys.exc_info()[0])
             finally:
                 time.sleep(self.delay)
