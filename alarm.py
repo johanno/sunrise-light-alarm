@@ -1,7 +1,9 @@
 import collections
 import datetime
 import json
+import os
 import pathlib
+import pwd
 import subprocess
 import sys
 import threading
@@ -26,7 +28,13 @@ def play_music(music):
         music = "/home/pi/Music/Awaken.m4a"
     command = ["cvlc", music]
     global music_process
-    music_process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    username = "pi"
+    pw_record = pwd.getpwnam(username)
+    homedir = pw_record.pw_dir
+    env = os.environ.copy()
+    env.update({'HOME': homedir, 'LOGNAME': username, 'PWD': os.getcwd(), 'FOO': 'bar', 'USER': username})
+
+    music_process = subprocess.Popen(command, shell=True, user=username, env=env)
     global playing_music
     playing_music = True
 
