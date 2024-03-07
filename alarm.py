@@ -5,7 +5,7 @@ import pathlib
 import sys
 import threading
 import time
-import subprocess
+import vlc
 from dateutil import parser
 from GPIO_mosfet_control.dimm_light import select_res_by_percent
 from GPIO_mosfet_control.led_light import power_on
@@ -16,22 +16,6 @@ SECONDS_PER_DAY = SECONDS_PER_MINUTE * 60 * 24
 TimesOfWeek = collections.namedtuple("WeekTimes", ["time_of_day", "days_of_week"])
 EMPTY_TIMES_OF_WEEK = TimesOfWeek(datetime.datetime.now(), [])
 
-audio_process: subprocess.Popen
-
-
-def play_music(music):
-    music = f"/home/pi/Music/{music}"
-    if music == "Default Music" or not pathlib.Path(music).exists():
-        music = "/home/pi/Music/Awaken.m4a"
-    global audio_process
-    audio_process = subprocess.Popen(["python3", "audio.py", music])
-
-
-def stop_music():
-    global audio_process
-    if audio_process and audio_process.poll() is None:
-        audio_process.terminate()
-
 
 class AlarmList(threading.Thread):
     def __init__(self, delay=10):
@@ -41,6 +25,22 @@ class AlarmList(threading.Thread):
         self.delay = delay
         self._lock = threading.Lock()
         self.setDaemon(True)
+        self.vlc_player: vlc.MediaListPlayer = vlc.MediaListPlayer()
+
+    def play_music(self, music):
+        music = f"/home/pi/Music/{music}"
+        if music == "Default Music" or not pathlib.Path(music).exists():
+            music = "/home/pi/Music/Awaken.mp3"
+        media: vlc.Media = vlc.Media(music)
+        media_list: vlc.MediaList = vlc.MediaList
+        media_list.add_media(media)
+        self.vlc_player.set_media_list(media_list)
+        self.vlc_player.set_playback_mode(vlc.PlaybackMode.loop)  # Set loop mode
+        self.vlc_player.get_media_player().audio_set_volume(100)
+        self.vlc_player.play()
+
+    def stop_music(self):
+        self.vlc_player.stop()
 
     def add_alarm(self, alarm):
         with self._lock:
@@ -60,6 +60,8 @@ class AlarmList(threading.Thread):
                 self.tick()
             except Exception as e:
                 print(e)
+                # TODO testing only
+                raise e
                 print(sys.exc_info()[0])
             finally:
                 time.sleep(self.delay)
@@ -79,11 +81,8 @@ class AlarmList(threading.Thread):
             print(f"deltamin: {delta_minutes}")
             # TODO disable intensity when delta  <= timedelta(0)
             light_intensity = alarm.calculate_light_intensity(delta_minutes)
-            global audio_process
-            if (not audio_process.poll() is None
-                    and delta < datetime.timedelta(0)
-                    and not delta < datetime.timedelta(minutes=-10)):
-                play_music(alarm.music)
+            if True and delta < datetime.timedelta(0) and not delta < datetime.timedelta(minutes=-10):
+                self.play_music(alarm.music)
             if light_intensity == 0:
                 continue
             else:
