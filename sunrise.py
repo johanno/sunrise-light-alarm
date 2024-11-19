@@ -1,3 +1,5 @@
+import secrets
+
 import datetime
 import functools
 import json
@@ -72,6 +74,13 @@ def off():
     all_off()
     # TODO music off
     return jsonify({"status": "OK"})
+
+
+# plays random music file
+@app.route("/play")
+def play_music():
+    files: list = list_music_files()["music_files"]
+    app.alarmList.play_music(secrets.choice(files))
 
 
 @app.route("/list_music_files")
