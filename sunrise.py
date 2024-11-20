@@ -79,8 +79,16 @@ def off():
 # plays random music file
 @app.route("/play")
 def play_music():
-    files: list = list_music_files()["music_files"]
-    app.alarmList.play_music(secrets.choice(files))
+    files: list = list_music_files().json["music_files"]
+    playing = secrets.choice(files)
+    app.alarmList.play_music(playing)
+    return jsonify({"status": "OK", "playing": playing})
+
+
+@app.route("/stop")
+def stop_music():
+    app.alarmList.stop_music()
+    return jsonify({"status": "OK"})
 
 
 @app.route("/list_music_files")

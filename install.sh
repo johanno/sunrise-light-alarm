@@ -25,12 +25,12 @@ echo "unpacking project on remote " $remote
 
 # executed on remote (raspberry-pi)
 ssh $remote '
-sudo apt-get install python3-pip vlc python3-vlc
 
 mkdir -p sunrise
 mv bundle.tar.gz sunrise
 cd sunrise
 tar -zxvf bundle.tar.gz
+sudo apt-get install python3-pip vlc python3-vlc
 sudo pip3 install -r requirements.txt
 
 #

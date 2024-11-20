@@ -7,6 +7,10 @@ After=syslog.target network.target remote-fs.target nss-lookup.target systemd-jo
 User=pi
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 WorkingDirectory=/home/pi/sunrise
+#os.environ['DISPLAY'] = ':0'
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+Environment="PULSE_SERVER=unix:/run/user/1000/pulse/native"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ExecStart=python3 -u sunrise.py
 Restart=on-failure
 

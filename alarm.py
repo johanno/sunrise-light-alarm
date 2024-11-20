@@ -32,7 +32,7 @@ class AlarmList(threading.Thread):
         if music == "Default Music" or not pathlib.Path(music).exists():
             music = "/home/pi/Music/Awaken.mp3"
         media: vlc.Media = vlc.Media(music)
-        media_list: vlc.MediaList = vlc.MediaList
+        media_list: vlc.MediaList = vlc.MediaList()
         media_list.add_media(media)
         self.vlc_player.set_media_list(media_list)
         self.vlc_player.set_playback_mode(vlc.PlaybackMode.loop)  # Set loop mode
